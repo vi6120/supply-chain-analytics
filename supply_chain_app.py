@@ -247,19 +247,6 @@ class SupplyChainAnalytics:
                     'model': fitted_model
                 }
             except:
-                return NonetaFrame({
-                    'ds': future_dates,
-                    'yhat': forecast,
-                    'yhat_lower': conf_int.iloc[:, 0],
-                    'yhat_upper': conf_int.iloc[:, 1]
-                })
-                
-                return {
-                    'method': 'ARIMA',
-                    'forecast': forecast_df,
-                    'model': fitted_model
-                }
-            except:
                 return None
     
     def calculate_reorder_point(self, avg_demand, lead_time, service_level=0.95, lead_time_std=None):
@@ -931,6 +918,8 @@ def main():
             fig.update_layout(xaxis_title="Month", yaxis_title="Variability Factor")
             fig.add_hline(y=1.0, line_dash="dash", line_color="red", annotation_text="Average")
             st.plotly_chart(fig, use_container_width=True)
+        
+        # Interactive cost calculations
         unit_cost = product_data['unit_cost'].iloc[0]
         interactive_safety_cost = interactive_calc['safety_stock'] * unit_cost * 0.25
         interactive_stockout_cost = (1 - interactive_service_level) * 365 / lead_time * avg_demand * unit_cost * 0.1
@@ -1055,7 +1044,8 @@ def main():
         - Consider customer criticality when setting service levels
         - EOQ minimizes total ordering and carrying costs
         """.format(
-            "REORDER NOW!" if current_inventory <= interactive_calc['reorder_point'] else "Inventory OK"
+            "REORDER NOW!" if current_inventory <= interactive_calc['reorder_point'] else "Inventory OK",
+            eoq_result['eoq'], eoq_result['order_frequency_days']
         ))
     
     elif page == "Supplier Performance":
