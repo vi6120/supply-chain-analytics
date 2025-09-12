@@ -25,7 +25,12 @@
 ### ⚡ Reorder Optimization
 - Dynamic reorder point calculation
 - Safety stock optimization
-- Service level configuration
+- Service level configuration (85%-99.9%)
+- **Service-Level Driven Inventory Planning**
+  - Interactive cost vs service trade-off slider
+  - Multi-scenario comparison (85%, 90%, 95%, 99%, 99.9%)
+  - Real-time safety stock and cost calculations
+  - Optimal service level identification
 - Inventory simulation
 - Automated reorder alerts
 
@@ -81,13 +86,14 @@ The application will automatically:
 ### Inventory KPIs
 - **Inventory Turnover**: Cost of Goods Sold ÷ Average Inventory
 - **Stockout Rate**: Percentage of days with stockouts
-- **Service Level**: Probability of not stocking out
+- **Service Level**: Probability of not stocking out (85%-99.9%)
 - **Carrying Cost**: Cost of holding inventory
 
 ### Reorder Calculations
 - **Reorder Point (ROP)**: Demand during Lead Time + Safety Stock
-- **Safety Stock**: Buffer inventory for demand variability
-- **Economic Order Quantity**: Optimal order size
+- **Safety Stock**: Buffer inventory for demand variability (service-level driven)
+- **Service Level Scenarios**: Multi-level analysis with cost trade-offs
+- **Optimal Service Level**: Cost-minimizing service level calculation
 
 ### Supplier Metrics
 - **Delivery Performance**: On-time delivery percentage
@@ -158,6 +164,8 @@ All dependencies are automatically installed when running the application:
 2. **Inventory Analysis**: Deep dive into specific product performance with threshold monitoring
 3. **Demand Forecasting**: Generate predictions for planning with Prophet/ARIMA
 4. **Reorder Optimization**: Get actionable reorder recommendations with safety stock
+   - **Service-Level Planning**: Use the interactive slider to balance cost vs customer service
+   - **Scenario Comparison**: Compare 5 service levels (85%-99.9%) with cost implications
 5. **Supplier Performance**: Evaluate and compare supplier metrics with scoring
 6. **Cost & Financial Integration**: Analyze financial impact and ROI of inventory decisions
 7. **Threshold Management**: Monitor inventory limits and prevent overstocking/understocking

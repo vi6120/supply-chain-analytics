@@ -251,8 +251,11 @@ class SupplyChainAnalytics:
     
     def calculate_reorder_point(self, avg_demand, lead_time, service_level=0.95):
         """Calculate reorder point with safety stock"""
-        # Safety stock calculation (simplified)
-        z_score = 1.96 if service_level == 0.95 else 1.65  # 95% or 90% service level
+        # Z-score mapping for different service levels
+        z_scores = {
+            0.85: 1.04, 0.90: 1.28, 0.95: 1.65, 0.99: 2.33, 0.999: 3.09
+        }
+        z_score = z_scores.get(service_level, 1.65)
         demand_std = avg_demand * 0.3  # Assume 30% coefficient of variation
         
         safety_stock = z_score * demand_std * np.sqrt(lead_time)
@@ -263,6 +266,41 @@ class SupplyChainAnalytics:
             'safety_stock': int(safety_stock),
             'avg_demand_during_lead_time': int(avg_demand * lead_time)
         }
+    
+    def calculate_service_level_scenarios(self, df, product_id, carrying_rate=0.25):
+        """Calculate multi-service level scenarios with cost trade-offs"""
+        product_data = df[df['product_id'] == product_id]
+        avg_demand = product_data['demand'].mean()
+        lead_time = product_data['lead_time'].iloc[0]
+        unit_cost = product_data['unit_cost'].iloc[0]
+        
+        service_levels = [0.85, 0.90, 0.95, 0.99, 0.999]
+        scenarios = []
+        
+        for sl in service_levels:
+            reorder_calc = self.calculate_reorder_point(avg_demand, lead_time, sl)
+            
+            # Calculate carrying cost for safety stock
+            daily_carrying_rate = carrying_rate / 365
+            safety_stock_cost = reorder_calc['safety_stock'] * unit_cost * carrying_rate
+            
+            # Estimate stockout cost (simplified)
+            stockout_probability = 1 - sl
+            expected_stockouts_per_year = stockout_probability * 365 / lead_time
+            stockout_cost = expected_stockouts_per_year * avg_demand * unit_cost * 0.1  # 10% penalty
+            
+            total_cost = safety_stock_cost + stockout_cost
+            
+            scenarios.append({
+                'service_level': sl,
+                'safety_stock': reorder_calc['safety_stock'],
+                'reorder_point': reorder_calc['reorder_point'],
+                'safety_stock_cost': safety_stock_cost,
+                'stockout_cost': stockout_cost,
+                'total_cost': total_cost
+            })
+        
+        return scenarios
     
     def calculate_carrying_costs(self, df, product_id, carrying_rate=0.25):
         """Calculate detailed carrying costs"""
@@ -377,6 +415,7 @@ def show_kpi_catalog():
         - **Minimum Inventory**: Lower safety limit to prevent stockouts (5 days demand).
         - **Reorder Point**: Inventory level that triggers new orders.
         - **Threshold Utilization**: Current inventory as percentage of maximum capacity.
+        - **Service Level**: Probability of not stocking out during lead time (85%-99.9%).
         
         ### 🚚 **Supplier Metrics**
         - **Lead Time**: Time between order placement and delivery.
@@ -738,7 +777,7 @@ def main():
         # Parameters
         col1, col2 = st.columns(2)
         with col1:
-            service_level = st.selectbox("Service Level", [0.90, 0.95, 0.99], index=1)
+            service_level = st.selectbox("Service Level", [0.85, 0.90, 0.95, 0.99, 0.999], index=2)
         with col2:
             lead_time = st.number_input("Lead Time (days)", 
                                       value=int(product_data['lead_time'].iloc[0]), 
@@ -769,6 +808,81 @@ def main():
             days_until_reorder = (current_inventory - reorder_calc['reorder_point']) / avg_demand
             st.success(f"✅ Inventory OK. Reorder in approximately {days_until_reorder:.1f} days")
         
+        # Service-Level Driven Inventory Planning
+        st.subheader("🎯 Service-Level Driven Inventory Planning")
+        
+        # Interactive service level slider
+        st.markdown("**Trade-off Analysis: Cost vs Customer Service**")
+        interactive_service_level = st.slider(
+            "Service Level Target", 
+            min_value=85, max_value=99, value=95, step=1,
+            help="Higher service levels reduce stockouts but increase carrying costs"
+        ) / 100
+        
+        # Calculate scenarios
+        scenarios = analytics.calculate_service_level_scenarios(df, selected_product)
+        scenarios_df = pd.DataFrame(scenarios)
+        
+        # Interactive calculation for slider value
+        interactive_calc = analytics.calculate_reorder_point(avg_demand, lead_time, interactive_service_level)
+        unit_cost = product_data['unit_cost'].iloc[0]
+        interactive_safety_cost = interactive_calc['safety_stock'] * unit_cost * 0.25
+        interactive_stockout_cost = (1 - interactive_service_level) * 365 / lead_time * avg_demand * unit_cost * 0.1
+        
+        # Display interactive results
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Service Level", f"{interactive_service_level:.1%}")
+        col2.metric("Safety Stock", f"{interactive_calc['safety_stock']} units")
+        col3.metric("Annual Safety Cost", f"${interactive_safety_cost:,.0f}")
+        col4.metric("Expected Stockout Cost", f"${interactive_stockout_cost:,.0f}")
+        
+        # Service level scenarios comparison
+        st.subheader("Service Level Scenarios Comparison")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Safety stock vs service level
+            fig = px.line(scenarios_df, x='service_level', y='safety_stock',
+                         title="Safety Stock Requirements by Service Level",
+                         markers=True)
+            fig.update_xaxis(tickformat='.0%')
+            fig.add_vline(x=interactive_service_level, line_dash="dash", 
+                         line_color="red", annotation_text=f"Current: {interactive_service_level:.0%}")
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            # Cost comparison
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=scenarios_df['service_level'], y=scenarios_df['safety_stock_cost'],
+                                   mode='lines+markers', name='Safety Stock Cost', line=dict(color='blue')))
+            fig.add_trace(go.Scatter(x=scenarios_df['service_level'], y=scenarios_df['stockout_cost'],
+                                   mode='lines+markers', name='Stockout Cost', line=dict(color='red')))
+            fig.add_trace(go.Scatter(x=scenarios_df['service_level'], y=scenarios_df['total_cost'],
+                                   mode='lines+markers', name='Total Cost', line=dict(color='green', width=3)))
+            fig.update_layout(title="Cost Trade-off Analysis", xaxis_title="Service Level", yaxis_title="Annual Cost ($)")
+            fig.update_xaxis(tickformat='.0%')
+            fig.add_vline(x=interactive_service_level, line_dash="dash", 
+                         line_color="orange", annotation_text=f"Current: {interactive_service_level:.0%}")
+            st.plotly_chart(fig, use_container_width=True)
+        
+        # Scenarios table
+        st.subheader("Detailed Service Level Scenarios")
+        display_scenarios = scenarios_df.copy()
+        display_scenarios['service_level'] = display_scenarios['service_level'].apply(lambda x: f"{x:.1%}")
+        display_scenarios['safety_stock_cost'] = display_scenarios['safety_stock_cost'].apply(lambda x: f"${x:,.0f}")
+        display_scenarios['stockout_cost'] = display_scenarios['stockout_cost'].apply(lambda x: f"${x:,.0f}")
+        display_scenarios['total_cost'] = display_scenarios['total_cost'].apply(lambda x: f"${x:,.0f}")
+        
+        st.dataframe(display_scenarios.rename(columns={
+            'service_level': 'Service Level',
+            'safety_stock': 'Safety Stock (units)',
+            'reorder_point': 'Reorder Point (units)',
+            'safety_stock_cost': 'Annual Safety Cost',
+            'stockout_cost': 'Annual Stockout Cost',
+            'total_cost': 'Total Annual Cost'
+        }), use_container_width=True)
+        
         # Visualization
         st.subheader("Inventory Simulation")
         
@@ -790,13 +904,13 @@ def main():
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=sim_df['date'], y=sim_df['inventory'], 
                                name='Projected Inventory', line=dict(color='blue')))
-        fig.add_hline(y=reorder_calc['reorder_point'], line_dash="dash", 
-                     line_color="red", annotation_text="Reorder Point")
-        fig.add_hline(y=reorder_calc['safety_stock'], line_dash="dot", 
+        fig.add_hline(y=interactive_calc['reorder_point'], line_dash="dash", 
+                     line_color="red", annotation_text=f"Reorder Point ({interactive_service_level:.0%} SL)")
+        fig.add_hline(y=interactive_calc['safety_stock'], line_dash="dot", 
                      line_color="orange", annotation_text="Safety Stock")
         
         fig.update_layout(
-            title="Inventory Projection",
+            title=f"Inventory Projection (Service Level: {interactive_service_level:.0%})",
             xaxis_title="Date",
             yaxis_title="Inventory Level",
             height=400
@@ -806,25 +920,26 @@ def main():
         
         # Chart Explanations
         st.markdown("""
-        ### 📈 **Inventory Projection Explanation**
+        ### 📈 **Service-Level Planning Explanation**
         
-        **Blue Line**: Projected inventory levels over next 60 days
-        **Red Dashed Line**: Reorder point - triggers new orders
-        **Orange Dotted Line**: Safety stock - minimum buffer level
+        **Service Level Trade-offs**:
+        - **85% Service**: Lower safety stock, higher stockout risk, lower costs
+        - **95% Service**: Balanced approach, moderate safety stock and costs
+        - **99% Service**: High safety stock, minimal stockouts, higher carrying costs
         
-        **Reorder Logic**:
-        - Order when inventory hits reorder point
-        - Safety stock prevents stockouts during lead time
-        - Service level determines safety stock size
+        **Cost Components**:
+        - **Safety Stock Cost**: Annual carrying cost for buffer inventory
+        - **Stockout Cost**: Expected cost of lost sales and customer dissatisfaction
+        - **Total Cost**: Optimal service level minimizes combined costs
         
         **Current Status**: {}
         
-        **Recommendations**:
-        - Monitor inventory daily
-        - Adjust reorder points based on demand changes
-        - Consider supplier reliability in safety stock calculations
+        **Key Insights**:
+        - Optimal service level balances cost and customer satisfaction
+        - Higher service levels require exponentially more safety stock
+        - Consider customer criticality when setting service levels
         """.format(
-            "REORDER NOW!" if current_inventory <= reorder_calc['reorder_point'] else "Inventory OK"
+            "REORDER NOW!" if current_inventory <= interactive_calc['reorder_point'] else "Inventory OK"
         ))
     
     elif page == "Supplier Performance":
