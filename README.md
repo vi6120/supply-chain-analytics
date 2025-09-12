@@ -140,6 +140,6 @@ All dependencies are automatically installed when running the application:
 
 ---
 
-**Author**: Vikas Ramaswamy
+**Author**: Arvind Dharanidharan & Vikas Ramaswamy
 **Version**: 1.0  
 **License**: MIT
