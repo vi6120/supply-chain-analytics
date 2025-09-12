@@ -37,6 +37,21 @@ A comprehensive analytics dashboard for supply chain optimization featuring dema
 - Performance scoring
 - Supplier rankings
 
+### 💰 Cost & Financial Integration
+- Carrying cost simulation ($/unit/day)
+- Lost sales estimation from stockouts
+- Dynamic margin analysis
+- ROI calculations
+- Financial impact visualization
+- Cost optimization recommendations
+
+### 📈 Enhanced Inventory Analysis
+- Inventory threshold management
+- Upper and lower limit monitoring
+- Threshold violation tracking
+- Utilization percentage analysis
+- Real-time threshold alerts
+
 ## Quick Start
 
 ### Option 1: Direct Run (Recommended)
@@ -81,14 +96,32 @@ The application will automatically:
 - **Lead Time Variability**: Consistency in delivery times
 - **Quality Score**: Overall supplier performance rating
 
+### Financial Metrics
+- **Carrying Cost per Unit**: Daily holding cost calculation
+- **Lost Sales Impact**: Revenue loss from stockouts
+- **Margin Loss**: Profit impact from delays and variability
+- **Inventory ROI**: Return on inventory investment
+- **Total Cost Impact**: Comprehensive financial analysis
+
+### Inventory Thresholds
+- **Maximum Inventory**: Upper limit (30 days demand)
+- **Minimum Inventory**: Lower limit (5 days demand)
+- **Reorder Point**: Trigger level with safety buffer
+- **Threshold Utilization**: Current vs maximum capacity
+- **Violation Tracking**: Days exceeding limits
+
 ## Data Structure
 
-The application generates realistic synthetic data including:
+The application generates enhanced realistic synthetic data including:
 - Product information (ID, category, supplier)
-- Daily demand patterns with seasonality
-- Inventory levels and movements
-- Supplier performance metrics
-- Cost and pricing data
+- Daily demand patterns with seasonality and weekly cycles
+- Inventory levels with realistic restocking logic
+- Inventory thresholds (max, min, reorder points)
+- Enhanced stockout scenarios (25% more realistic)
+- Supplier performance with variable delays (25% chance)
+- Cost and pricing data with profit margins
+- Financial impact calculations
+- Threshold violation tracking
 
 ## Business Value
 
@@ -124,10 +157,12 @@ All dependencies are automatically installed when running the application:
 ## Usage Tips
 
 1. **Dashboard Overview**: Start here for high-level KPIs and trends
-2. **Inventory Analysis**: Deep dive into specific product performance
-3. **Demand Forecasting**: Generate predictions for planning
-4. **Reorder Optimization**: Get actionable reorder recommendations
-5. **Supplier Performance**: Evaluate and compare supplier metrics
+2. **Inventory Analysis**: Deep dive into specific product performance with threshold monitoring
+3. **Demand Forecasting**: Generate predictions for planning with Prophet/ARIMA
+4. **Reorder Optimization**: Get actionable reorder recommendations with safety stock
+5. **Supplier Performance**: Evaluate and compare supplier metrics with scoring
+6. **Cost & Financial Integration**: Analyze financial impact and ROI of inventory decisions
+7. **Threshold Management**: Monitor inventory limits and prevent overstocking/understocking
 
 ## Future Enhancements
 
