@@ -4,34 +4,7 @@ Supply Chain & Inventory Optimization Analytics
 A comprehensive analytics dashboard for supply chain optimization
 """
 
-import subprocess
-import sys
 import os
-
-# Required packages
-REQUIRED_PACKAGES = [
-    'streamlit',
-    'pandas',
-    'numpy',
-    'matplotlib',
-    'seaborn',
-    'plotly',
-    'statsmodels',
-    'prophet',
-    'scikit-learn'
-]
-
-def install_packages():
-    """Install required packages if not available"""
-    for package in REQUIRED_PACKAGES:
-        try:
-            __import__(package.replace('-', '_'))
-        except ImportError:
-            print(f"Installing {package}...")
-            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-
-# Install packages before importing
-install_packages()
 
 import streamlit as st
 import pandas as pd
