@@ -133,8 +133,14 @@ class SupplyChainAnalytics:
                     
                     current_inventory = inventory
                 
-                # Enhanced stockout logic
-                stockout = 1 if inventory < demand or inventory <= min_inventory * 0.5 else 0
+                # Enhanced stockout logic with more realistic scenarios
+                stockout = 0
+                if inventory < demand:
+                    stockout = 1
+                elif inventory <= min_inventory * 0.3 and np.random.random() < 0.4:
+                    stockout = 1  # Random stockouts when very low inventory
+                elif delivery_delay > 2 and inventory <= reorder_point and np.random.random() < 0.6:
+                    stockout = 1  # Stockouts due to delivery delays
                 
                 # More realistic supplier delays
                 delivery_delay = 0
@@ -350,6 +356,34 @@ class SupplyChainAnalytics:
             'threshold_utilization': (avg_inventory / max_threshold) * 100
         }
 
+def show_kpi_catalog():
+    """Display KPI definitions and explanations"""
+    with st.expander("📚 KPI Catalog & Technical Definitions"):
+        st.markdown("""
+        ### 📊 **Inventory KPIs**
+        - **Inventory Turnover**: Measures how efficiently inventory is used. Higher values indicate better efficiency.
+        - **Stockout Rate**: Percentage of time when demand cannot be met. Lower is better for customer service.
+        - **Service Level**: Probability of meeting demand without stockouts. Target: 95-99%.
+        - **Carrying Cost**: Cost of holding inventory including storage, insurance, and capital costs.
+        
+        ### 💰 **Financial Metrics**
+        - **Cost per Unit per Day**: Daily holding cost for each inventory unit.
+        - **Lost Sales**: Revenue lost when customers cannot purchase due to stockouts.
+        - **ROI (Return on Investment)**: Profit generated per dollar invested in inventory.
+        - **Margin Loss**: Profit reduction due to operational inefficiencies.
+        
+        ### 📈 **Threshold Management**
+        - **Maximum Inventory**: Upper safety limit to prevent overstocking (30 days demand).
+        - **Minimum Inventory**: Lower safety limit to prevent stockouts (5 days demand).
+        - **Reorder Point**: Inventory level that triggers new orders.
+        - **Threshold Utilization**: Current inventory as percentage of maximum capacity.
+        
+        ### 🚚 **Supplier Metrics**
+        - **Lead Time**: Time between order placement and delivery.
+        - **Delivery Delay**: Days beyond promised delivery date.
+        - **Performance Score**: Composite metric combining reliability and speed.
+        """)
+
 def main():
     # Initialize the analytics class
     try:
@@ -377,6 +411,10 @@ def main():
         "Supplier Performance",
         "Cost & Financial Integration"
     ])
+    
+    # Add KPI Catalog to sidebar
+    st.sidebar.markdown("---")
+    show_kpi_catalog()
     
     # Load or generate data
     try:
@@ -434,6 +472,17 @@ def main():
             </div>
             """, unsafe_allow_html=True)
         
+        # KPI Explanations
+        st.markdown("""
+        ### 📊 **KPI Explanations**
+        
+        - **Inventory Turnover {:.2f}**: Higher values (>6) indicate efficient inventory management
+        - **Stockout Rate {:.1f}%**: Target <5% for good customer service
+        - **Delivery Delay {:.1f} days**: Lower values indicate reliable suppliers
+        - **Inventory Value ${:,.0f}**: Total capital tied up in inventory
+        """.format(kpis['avg_inventory_turnover'], kpis['avg_stockout_rate'], 
+                   kpis['avg_delivery_delay'], kpis['total_inventory_value']))
+        
         # Charts
         col1, col2 = st.columns(2)
         
@@ -450,6 +499,21 @@ def main():
             fig = px.pie(category_demand, values='demand', names='category', title="Demand Distribution")
             fig.update_layout(height=400)
             st.plotly_chart(fig, use_container_width=True)
+        
+        # Chart Explanations
+        st.markdown("""
+        ### 📈 **Chart Explanations**
+        
+        **Daily Demand Trend**: Shows total demand across all products over time. Look for:
+        - Seasonal patterns (peaks and valleys)
+        - Weekly cycles (lower weekend demand)
+        - Growth or decline trends
+        
+        **Demand Distribution**: Pie chart showing which product categories drive the most demand. Use this to:
+        - Identify high-volume categories requiring more attention
+        - Allocate resources based on demand patterns
+        - Plan category-specific inventory strategies
+        """)
     
     elif page == "Inventory Analysis":
         st.header("Inventory Analysis")
@@ -499,6 +563,24 @@ def main():
         col3.metric("Threshold Utilization", f"{threshold_data['threshold_utilization']:.1f}%")
         col4.metric("Inventory Turnover", f"{turnover:.2f}")
         
+        # Threshold Analysis
+        st.markdown("""
+        ### 📈 **Threshold Analysis**
+        
+        **Current Inventory**: {:.0f} units ({:.1f}% of max capacity)
+        
+        **Threshold Status**:
+        - Max Threshold: {:.0f} units (30 days demand)
+        - Min Threshold: {:.0f} units (5 days demand)
+        - Reorder Point: {:.0f} units (includes safety stock)
+        
+        **Performance**: {} stockout days detected in the analysis period.
+        """.format(
+            threshold_data['current_inventory'], threshold_data['threshold_utilization'],
+            threshold_data['max_threshold'], threshold_data['min_threshold'], 
+            threshold_data['reorder_point'], stockout_days
+        ))
+        
         # Threshold violations
         col1, col2 = st.columns(2)
         with col1:
@@ -512,6 +594,22 @@ def main():
                 st.error(f"🚨 Below min threshold {threshold_data['under_min_days']} days")
             else:
                 st.success("✅ No min threshold violations")
+        
+        # Chart Explanations
+        st.markdown("""
+        ### 📈 **Chart Explanations**
+        
+        **Inventory Levels Over Time**: Shows how inventory changes daily. Key insights:
+        - Inventory depletion patterns
+        - Restocking frequency and timing
+        - Seasonal inventory adjustments
+        
+        **Inventory Thresholds**: Displays inventory against safety limits:
+        - **Red Line (Max)**: Overstocking risk above this line
+        - **Orange Line (Min)**: Stockout risk below this line  
+        - **Green Line (Reorder)**: Optimal reorder trigger point
+        - **Blue Line (Actual)**: Current inventory trajectory
+        """)
     
     elif page == "Demand Forecasting":
         st.header("Demand Forecasting")
@@ -596,8 +694,37 @@ def main():
                 col1.metric("Average Forecasted Demand", f"{avg_forecast:.0f}")
                 col2.metric("Peak Demand", f"{max_forecast:.0f}")
                 col3.metric("Minimum Demand", f"{min_forecast:.0f}")
+                
+                # Chart Explanations
+                st.markdown("""
+                ### 📈 **Forecast Chart Explanation**
+                
+                **Blue Line (Historical)**: Past demand data showing actual patterns
+                **Red Dashed Line (Forecast)**: Predicted future demand using {}
+                **Gray Shaded Area**: Confidence interval (uncertainty range)
+                
+                **Key Insights**:
+                - Wider confidence intervals indicate higher uncertainty
+                - Seasonal patterns help predict future peaks/valleys
+                - Use forecasts for procurement planning and capacity management
+                """.format(forecast_result['method']))
             else:
                 st.error("Unable to generate forecast. Insufficient data.")
+        
+        # Forecasting Method Explanations
+        st.markdown("""
+        ### 🤖 **Forecasting Methods**
+        
+        **Prophet**: Advanced ML model that handles:
+        - Seasonal patterns (yearly, weekly)
+        - Holiday effects and trend changes
+        - Missing data and outliers
+        
+        **ARIMA**: Statistical model that captures:
+        - Autoregressive patterns
+        - Moving averages
+        - Trend and seasonality components
+        """)
     
     elif page == "Reorder Optimization":
         st.header("Reorder Point Optimization")
@@ -676,6 +803,29 @@ def main():
         )
         
         st.plotly_chart(fig, use_container_width=True)
+        
+        # Chart Explanations
+        st.markdown("""
+        ### 📈 **Inventory Projection Explanation**
+        
+        **Blue Line**: Projected inventory levels over next 60 days
+        **Red Dashed Line**: Reorder point - triggers new orders
+        **Orange Dotted Line**: Safety stock - minimum buffer level
+        
+        **Reorder Logic**:
+        - Order when inventory hits reorder point
+        - Safety stock prevents stockouts during lead time
+        - Service level determines safety stock size
+        
+        **Current Status**: {}
+        
+        **Recommendations**:
+        - Monitor inventory daily
+        - Adjust reorder points based on demand changes
+        - Consider supplier reliability in safety stock calculations
+        """.format(
+            "REORDER NOW!" if current_inventory <= reorder_calc['reorder_point'] else "Inventory OK"
+        ))
     
     elif page == "Supplier Performance":
         st.header("Supplier Performance Analysis")
@@ -732,6 +882,30 @@ def main():
         with col2:
             st.error(f"⚠️ Needs Improvement: {supplier_metrics.iloc[-1]['supplier']}")
             st.write(f"Performance Score: {supplier_metrics.iloc[-1]['Performance_Score']:.2f}")
+        
+        # Chart Explanations
+        st.markdown("""
+        ### 📈 **Supplier Analysis Explanation**
+        
+        **Delivery Performance Chart**: Shows average delays by supplier
+        - Lower bars indicate more reliable suppliers
+        - Consistent performers have minimal delays
+        
+        **Lead Time Comparison**: Shows promised delivery times
+        - Shorter lead times enable faster response to demand
+        - Consider lead time vs reliability trade-offs
+        
+        **Performance Score Calculation**:
+        - 40% Delivery Delay Weight
+        - 30% Delay Variability Weight  
+        - 30% Lead Time Weight
+        - Lower scores indicate better performance
+        
+        **Supplier Selection Criteria**:
+        - Reliability (consistent delivery)
+        - Speed (short lead times)
+        - Quality (low defect rates)
+        """)
     
     elif page == "Cost & Financial Integration":
         st.header("Cost & Financial Analysis")
@@ -831,6 +1005,31 @@ def main():
             
             if margin_impact['margin_loss_percentage'] > 5:
                 st.error("📈 High margin loss detected. Review supplier performance.")
+        
+        # Chart Explanations
+        st.markdown("""
+        ### 📈 **Financial Analysis Explanation**
+        
+        **Annual Financial Impact Chart**: Shows cost breakdown by category:
+        - **Carrying Costs**: Cost of holding inventory (storage, insurance, capital)
+        - **Lost Sales**: Revenue lost due to stockouts
+        - **Delay Impact**: Additional costs from supplier delays
+        - **Variability Impact**: Costs from demand uncertainty
+        
+        **Key Financial Metrics**:
+        - **Cost per Unit per Day**: ${:.2f} - Daily holding cost for each unit
+        - **Total Annual Cost**: ${:,.0f} - Complete financial impact
+        - **ROI**: {:.1f}% - Return on inventory investment
+        
+        **Optimization Insights**:
+        - High carrying costs suggest overstocking
+        - High lost sales indicate understocking
+        - Balance these costs for optimal inventory levels
+        """.format(
+            carrying_costs['cost_per_unit_per_day'],
+            total_annual_cost,
+            roi
+        ))
 
 if __name__ == "__main__":
     main()
