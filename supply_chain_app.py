@@ -50,7 +50,15 @@ st.markdown("""
         background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
     }
     .stSelectbox > div > div {
-        background-color: #f0f2f6;
+        background-color: white !important;
+        color: black !important;
+    }
+    .stSelectbox > div > div > div {
+        background-color: white !important;
+        color: black !important;
+    }
+    .stSelectbox label {
+        color: black !important;
     }
 </style>
 """, unsafe_allow_html=True)
