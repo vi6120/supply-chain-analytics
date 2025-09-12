@@ -133,6 +133,11 @@ class SupplyChainAnalytics:
                     
                     current_inventory = inventory
                 
+                # More realistic supplier delays
+                delivery_delay = 0
+                if np.random.random() < 0.25:  # 25% chance of delay
+                    delivery_delay = np.random.randint(1, 5)
+                
                 # Enhanced stockout logic with more realistic scenarios
                 stockout = 0
                 if inventory < demand:
@@ -141,11 +146,6 @@ class SupplyChainAnalytics:
                     stockout = 1  # Random stockouts when very low inventory
                 elif delivery_delay > 2 and inventory <= reorder_point and np.random.random() < 0.6:
                     stockout = 1  # Stockouts due to delivery delays
-                
-                # More realistic supplier delays
-                delivery_delay = 0
-                if np.random.random() < 0.25:  # 25% chance of delay
-                    delivery_delay = np.random.randint(1, 5)
                 
                 data.append({
                     'date': date,
