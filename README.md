@@ -140,6 +140,6 @@ All dependencies are automatically installed when running the application:
 
 ---
 
-**Author**: Supply Chain Analytics Team  
+**Author**: Vikas Ramaswamy
 **Version**: 1.0  
 **License**: MIT
