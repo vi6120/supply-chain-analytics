@@ -247,10 +247,23 @@ class SupplyChainAnalytics:
                     'model': fitted_model
                 }
             except:
+                return NonetaFrame({
+                    'ds': future_dates,
+                    'yhat': forecast,
+                    'yhat_lower': conf_int.iloc[:, 0],
+                    'yhat_upper': conf_int.iloc[:, 1]
+                })
+                
+                return {
+                    'method': 'ARIMA',
+                    'forecast': forecast_df,
+                    'model': fitted_model
+                }
+            except:
                 return None
     
-    def calculate_reorder_point(self, avg_demand, lead_time, service_level=0.95):
-        """Calculate reorder point with safety stock"""
+    def calculate_reorder_point(self, avg_demand, lead_time, service_level=0.95, lead_time_std=None):
+        """Calculate reorder point with safety stock and lead time variability"""
         # Z-score mapping for different service levels
         z_scores = {
             0.85: 1.04, 0.90: 1.28, 0.95: 1.65, 0.99: 2.33, 0.999: 3.09
@@ -258,14 +271,64 @@ class SupplyChainAnalytics:
         z_score = z_scores.get(service_level, 1.65)
         demand_std = avg_demand * 0.3  # Assume 30% coefficient of variation
         
-        safety_stock = z_score * demand_std * np.sqrt(lead_time)
+        # Enhanced safety stock with lead time variability
+        if lead_time_std is None:
+            lead_time_std = lead_time * 0.2  # Assume 20% lead time variability
+        
+        # Safety stock formula with lead time variability
+        safety_stock = z_score * np.sqrt(
+            (demand_std ** 2 * lead_time) + 
+            (avg_demand ** 2 * lead_time_std ** 2)
+        )
+        
         reorder_point = (avg_demand * lead_time) + safety_stock
         
         return {
             'reorder_point': int(reorder_point),
             'safety_stock': int(safety_stock),
-            'avg_demand_during_lead_time': int(avg_demand * lead_time)
+            'avg_demand_during_lead_time': int(avg_demand * lead_time),
+            'lead_time_std': lead_time_std
         }
+    
+    def calculate_eoq(self, annual_demand, ordering_cost=100, carrying_cost_per_unit=None, unit_cost=None, carrying_rate=0.25):
+        """Calculate Economic Order Quantity"""
+        if carrying_cost_per_unit is None and unit_cost is not None:
+            carrying_cost_per_unit = unit_cost * carrying_rate
+        elif carrying_cost_per_unit is None:
+            carrying_cost_per_unit = 50  # Default carrying cost
+        
+        # EOQ formula: sqrt(2 * D * S / H)
+        eoq = np.sqrt((2 * annual_demand * ordering_cost) / carrying_cost_per_unit)
+        
+        # Calculate related metrics
+        number_of_orders = annual_demand / eoq
+        total_ordering_cost = number_of_orders * ordering_cost
+        total_carrying_cost = (eoq / 2) * carrying_cost_per_unit
+        total_cost = total_ordering_cost + total_carrying_cost
+        
+        return {
+            'eoq': int(eoq),
+            'number_of_orders_per_year': number_of_orders,
+            'total_ordering_cost': total_ordering_cost,
+            'total_carrying_cost': total_carrying_cost,
+            'total_inventory_cost': total_cost,
+            'order_frequency_days': 365 / number_of_orders
+        }
+    
+    def calculate_seasonal_safety_stock(self, df, product_id, service_level=0.95):
+        """Calculate seasonal adjustments for safety stock"""
+        product_data = df[df['product_id'] == product_id].copy()
+        product_data['month'] = product_data['date'].dt.month
+        
+        # Calculate monthly demand statistics
+        monthly_stats = product_data.groupby('month')['demand'].agg(['mean', 'std']).reset_index()
+        monthly_stats['cv'] = monthly_stats['std'] / monthly_stats['mean']  # Coefficient of variation
+        
+        # Seasonal adjustment factors
+        avg_cv = monthly_stats['cv'].mean()
+        monthly_stats['seasonal_factor'] = monthly_stats['cv'] / avg_cv
+        
+        return monthly_stats[['month', 'mean', 'std', 'seasonal_factor']]
     
     def calculate_service_level_scenarios(self, df, product_id, carrying_rate=0.25):
         """Calculate multi-service level scenarios with cost trade-offs"""
@@ -787,8 +850,10 @@ def main():
         avg_demand = product_data['demand'].mean()
         current_inventory = product_data['inventory'].iloc[-1]
         
-        # Calculate reorder point
-        reorder_calc = analytics.calculate_reorder_point(avg_demand, lead_time, service_level)
+        # Calculate reorder point with lead time variability
+        lead_time_data = product_data['lead_time']
+        lead_time_std = lead_time_data.std() if len(lead_time_data.unique()) > 1 else lead_time * 0.2
+        reorder_calc = analytics.calculate_reorder_point(avg_demand, lead_time, service_level, lead_time_std)
         
         # Display results
         st.subheader("Reorder Recommendations")
@@ -808,6 +873,27 @@ def main():
             days_until_reorder = (current_inventory - reorder_calc['reorder_point']) / avg_demand
             st.success(f"✅ Inventory OK. Reorder in approximately {days_until_reorder:.1f} days")
         
+        # EOQ Analysis
+        st.subheader("📦 Economic Order Quantity (EOQ) Analysis")
+        
+        # EOQ parameters
+        col1, col2 = st.columns(2)
+        with col1:
+            ordering_cost = st.number_input("Ordering Cost per Order ($)", value=100, min_value=10, max_value=1000)
+        with col2:
+            annual_demand = avg_demand * 365
+            st.metric("Annual Demand", f"{annual_demand:.0f} units")
+        
+        # Calculate EOQ
+        unit_cost = product_data['unit_cost'].iloc[0]
+        eoq_result = analytics.calculate_eoq(annual_demand, ordering_cost, unit_cost=unit_cost)
+        
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Optimal Order Size (EOQ)", f"{eoq_result['eoq']} units")
+        col2.metric("Orders per Year", f"{eoq_result['number_of_orders_per_year']:.1f}")
+        col3.metric("Order Frequency", f"{eoq_result['order_frequency_days']:.0f} days")
+        col4.metric("Total Annual Cost", f"${eoq_result['total_inventory_cost']:,.0f}")
+        
         # Service-Level Driven Inventory Planning
         st.subheader("🎯 Service-Level Driven Inventory Planning")
         
@@ -824,7 +910,27 @@ def main():
         scenarios_df = pd.DataFrame(scenarios)
         
         # Interactive calculation for slider value
-        interactive_calc = analytics.calculate_reorder_point(avg_demand, lead_time, interactive_service_level)
+        interactive_calc = analytics.calculate_reorder_point(avg_demand, lead_time, interactive_service_level, lead_time_std)
+        
+        # Seasonal Analysis
+        seasonal_data = analytics.calculate_seasonal_safety_stock(df, selected_product, interactive_service_level)
+        
+        # Display seasonal insights
+        st.subheader("📅 Seasonal Demand Analysis")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            fig = px.line(seasonal_data, x='month', y='mean', 
+                         title="Average Monthly Demand Pattern", markers=True)
+            fig.update_layout(xaxis_title="Month", yaxis_title="Average Demand")
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with col2:
+            fig = px.bar(seasonal_data, x='month', y='seasonal_factor',
+                        title="Seasonal Variability Factor")
+            fig.update_layout(xaxis_title="Month", yaxis_title="Variability Factor")
+            fig.add_hline(y=1.0, line_dash="dash", line_color="red", annotation_text="Average")
+            st.plotly_chart(fig, use_container_width=True)
         unit_cost = product_data['unit_cost'].iloc[0]
         interactive_safety_cost = interactive_calc['safety_stock'] * unit_cost * 0.25
         interactive_stockout_cost = (1 - interactive_service_level) * 365 / lead_time * avg_demand * unit_cost * 0.1
@@ -846,7 +952,7 @@ def main():
             fig = px.line(scenarios_df, x='service_level', y='safety_stock',
                          title="Safety Stock Requirements by Service Level",
                          markers=True)
-            fig.update_xaxis(tickformat='.0%')
+            fig.update_layout(xaxis=dict(tickformat='.0%'))
             fig.add_vline(x=interactive_service_level, line_dash="dash", 
                          line_color="red", annotation_text=f"Current: {interactive_service_level:.0%}")
             st.plotly_chart(fig, use_container_width=True)
@@ -860,8 +966,12 @@ def main():
                                    mode='lines+markers', name='Stockout Cost', line=dict(color='red')))
             fig.add_trace(go.Scatter(x=scenarios_df['service_level'], y=scenarios_df['total_cost'],
                                    mode='lines+markers', name='Total Cost', line=dict(color='green', width=3)))
-            fig.update_layout(title="Cost Trade-off Analysis", xaxis_title="Service Level", yaxis_title="Annual Cost ($)")
-            fig.update_xaxis(tickformat='.0%')
+            fig.update_layout(
+                title="Cost Trade-off Analysis", 
+                xaxis_title="Service Level", 
+                yaxis_title="Annual Cost ($)",
+                xaxis=dict(tickformat='.0%')
+            )
             fig.add_vline(x=interactive_service_level, line_dash="dash", 
                          line_color="orange", annotation_text=f"Current: {interactive_service_level:.0%}")
             st.plotly_chart(fig, use_container_width=True)
@@ -934,10 +1044,16 @@ def main():
         
         **Current Status**: {}
         
+        **Enhanced Features**:
+        - **EOQ Integration**: Optimal order size of {:.0f} units every {:.0f} days
+        - **Lead Time Variability**: Safety stock accounts for delivery uncertainty
+        - **Seasonal Adjustments**: Demand patterns vary by month (see seasonal analysis)
+        
         **Key Insights**:
         - Optimal service level balances cost and customer satisfaction
         - Higher service levels require exponentially more safety stock
         - Consider customer criticality when setting service levels
+        - EOQ minimizes total ordering and carrying costs
         """.format(
             "REORDER NOW!" if current_inventory <= interactive_calc['reorder_point'] else "Inventory OK"
         ))
