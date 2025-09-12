@@ -1,7 +1,5 @@
 # Supply Chain & Inventory Optimization Analytics
 
-A comprehensive analytics dashboard for supply chain optimization featuring demand forecasting, inventory analysis, and reorder point optimization.
-
 ## Features
 
 ### 📊 Dashboard Overview
@@ -180,3 +178,7 @@ All dependencies are automatically installed when running the application:
 **Version**: 1.0
 
 **License**: MIT
+
+
+
+A comprehensive analytics dashboard for supply chain optimization featuring demand forecasting, inventory analysis, and reorder point optimization.
