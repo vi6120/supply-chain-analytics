@@ -233,6 +233,73 @@ class SupplyChainAnalytics:
             'safety_stock': int(safety_stock),
             'avg_demand_during_lead_time': int(avg_demand * lead_time)
         }
+    
+    def calculate_carrying_costs(self, df, product_id, carrying_rate=0.25):
+        """Calculate detailed carrying costs"""
+        product_data = df[df['product_id'] == product_id]
+        unit_cost = product_data['unit_cost'].iloc[0]
+        avg_inventory = product_data['inventory'].mean()
+        
+        # Carrying cost components
+        daily_carrying_rate = carrying_rate / 365
+        cost_per_unit_per_day = unit_cost * daily_carrying_rate
+        total_daily_carrying_cost = avg_inventory * cost_per_unit_per_day
+        annual_carrying_cost = total_daily_carrying_cost * 365
+        
+        return {
+            'cost_per_unit_per_day': cost_per_unit_per_day,
+            'total_daily_carrying_cost': total_daily_carrying_cost,
+            'annual_carrying_cost': annual_carrying_cost,
+            'avg_inventory_value': avg_inventory * unit_cost
+        }
+    
+    def calculate_lost_sales(self, df, product_id, profit_margin=0.30):
+        """Calculate lost sales from stockouts"""
+        product_data = df[df['product_id'] == product_id]
+        unit_cost = product_data['unit_cost'].iloc[0]
+        selling_price = unit_cost / (1 - profit_margin)
+        unit_profit = selling_price - unit_cost
+        
+        # Calculate lost sales
+        stockout_days = product_data[product_data['stockout'] == 1]
+        total_lost_units = stockout_days['demand'].sum()
+        lost_revenue = total_lost_units * selling_price
+        lost_profit = total_lost_units * unit_profit
+        
+        return {
+            'stockout_days': len(stockout_days),
+            'total_lost_units': total_lost_units,
+            'lost_revenue': lost_revenue,
+            'lost_profit': lost_profit,
+            'unit_profit': unit_profit,
+            'selling_price': selling_price
+        }
+    
+    def calculate_margin_impact(self, df, product_id, profit_margin=0.30):
+        """Calculate margin impact from supplier delays and demand fluctuations"""
+        product_data = df[df['product_id'] == product_id]
+        unit_cost = product_data['unit_cost'].iloc[0]
+        selling_price = unit_cost / (1 - profit_margin)
+        
+        # Delay impact
+        delayed_deliveries = product_data[product_data['delivery_delay'] > 0]
+        delay_impact_units = delayed_deliveries['demand'].sum()
+        delay_cost = delay_impact_units * unit_cost * 0.05  # 5% cost increase per delay
+        
+        # Demand variability impact
+        demand_std = product_data['demand'].std()
+        demand_cv = demand_std / product_data['demand'].mean()
+        variability_cost = demand_cv * product_data['demand'].sum() * unit_cost * 0.02
+        
+        total_margin_loss = delay_cost + variability_cost
+        
+        return {
+            'delay_impact_units': delay_impact_units,
+            'delay_cost': delay_cost,
+            'demand_variability_cost': variability_cost,
+            'total_margin_loss': total_margin_loss,
+            'margin_loss_percentage': (total_margin_loss / (product_data['demand'].sum() * selling_price)) * 100
+        }
 
 def main():
     # Initialize the analytics class
@@ -258,7 +325,8 @@ def main():
         "Inventory Analysis", 
         "Demand Forecasting",
         "Reorder Optimization",
-        "Supplier Performance"
+        "Supplier Performance",
+        "Cost & Financial Integration"
     ])
     
     # Load or generate data
@@ -593,6 +661,105 @@ def main():
         with col2:
             st.error(f"⚠️ Needs Improvement: {supplier_metrics.iloc[-1]['supplier']}")
             st.write(f"Performance Score: {supplier_metrics.iloc[-1]['Performance_Score']:.2f}")
+    
+    elif page == "Cost & Financial Integration":
+        st.header("Cost & Financial Analysis")
+        
+        # Product selection
+        products = df['product_id'].unique()
+        selected_product = st.selectbox("Select Product for Financial Analysis", products)
+        
+        # Financial parameters
+        col1, col2 = st.columns(2)
+        with col1:
+            carrying_rate = st.slider("Annual Carrying Cost Rate", 0.15, 0.40, 0.25, 0.01)
+        with col2:
+            profit_margin = st.slider("Profit Margin", 0.10, 0.50, 0.30, 0.01)
+        
+        # Calculate financial metrics
+        carrying_costs = analytics.calculate_carrying_costs(df, selected_product, carrying_rate)
+        lost_sales = analytics.calculate_lost_sales(df, selected_product, profit_margin)
+        margin_impact = analytics.calculate_margin_impact(df, selected_product, profit_margin)
+        
+        # Carrying Cost Analysis
+        st.subheader("💰 Carrying Cost Simulation")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        col1.metric("Cost per Unit per Day", f"${carrying_costs['cost_per_unit_per_day']:.2f}")
+        col2.metric("Daily Carrying Cost", f"${carrying_costs['total_daily_carrying_cost']:.2f}")
+        col3.metric("Annual Carrying Cost", f"${carrying_costs['annual_carrying_cost']:,.0f}")
+        col4.metric("Avg Inventory Value", f"${carrying_costs['avg_inventory_value']:,.0f}")
+        
+        # Lost Sales Analysis
+        st.subheader("📉 Lost Sales Estimation")
+        col1, col2, col3, col4 = st.columns(4)
+        
+        col1.metric("Stockout Days", f"{lost_sales['stockout_days']} days")
+        col2.metric("Lost Units", f"{lost_sales['total_lost_units']:,.0f}")
+        col3.metric("Lost Revenue", f"${lost_sales['lost_revenue']:,.0f}")
+        col4.metric("Lost Profit", f"${lost_sales['lost_profit']:,.0f}")
+        
+        # Margin Impact Analysis
+        st.subheader("📊 Dynamic Margin Analysis")
+        col1, col2, col3 = st.columns(3)
+        
+        col1.metric("Delay Cost Impact", f"${margin_impact['delay_cost']:,.0f}")
+        col2.metric("Variability Cost", f"${margin_impact['demand_variability_cost']:,.0f}")
+        col3.metric("Total Margin Loss", f"{margin_impact['margin_loss_percentage']:.2f}%")
+        
+        # Financial Impact Visualization
+        st.subheader("Financial Impact Breakdown")
+        
+        # Create financial impact chart
+        financial_data = {
+            'Cost Type': ['Carrying Costs', 'Lost Sales', 'Delay Impact', 'Variability Impact'],
+            'Annual Cost': [
+                carrying_costs['annual_carrying_cost'],
+                lost_sales['lost_profit'],
+                margin_impact['delay_cost'] * 12,
+                margin_impact['demand_variability_cost'] * 12
+            ]
+        }
+        
+        fig = px.bar(pd.DataFrame(financial_data), x='Cost Type', y='Annual Cost',
+                    title="Annual Financial Impact by Cost Type",
+                    color='Cost Type')
+        fig.update_layout(height=400)
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Cost optimization recommendations
+        st.subheader("💡 Cost Optimization Recommendations")
+        
+        total_annual_cost = (carrying_costs['annual_carrying_cost'] + 
+                           lost_sales['lost_profit'] + 
+                           margin_impact['total_margin_loss'] * 12)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.info(f"**Total Annual Cost Impact: ${total_annual_cost:,.0f}**")
+            
+            if lost_sales['stockout_days'] > 10:
+                st.warning("🚨 High stockout frequency detected. Consider increasing safety stock.")
+            
+            if carrying_costs['annual_carrying_cost'] > lost_sales['lost_profit']:
+                st.warning("💰 Carrying costs exceed lost sales. Consider reducing inventory levels.")
+            else:
+                st.success("✅ Inventory levels appear optimized for cost vs service trade-off.")
+        
+        with col2:
+            # ROI calculation for inventory investment
+            inventory_investment = carrying_costs['avg_inventory_value']
+            annual_profit_impact = lost_sales['lost_profit'] - carrying_costs['annual_carrying_cost']
+            roi = (annual_profit_impact / inventory_investment) * 100 if inventory_investment > 0 else 0
+            
+            st.metric("Inventory ROI", f"{roi:.1f}%")
+            
+            if margin_impact['delay_impact_units'] > 0:
+                st.warning(f"⏰ Supplier delays affecting {margin_impact['delay_impact_units']:,.0f} units")
+            
+            if margin_impact['margin_loss_percentage'] > 5:
+                st.error("📈 High margin loss detected. Review supplier performance.")
 
 if __name__ == "__main__":
     main()
