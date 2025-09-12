@@ -69,7 +69,7 @@ class SupplyChainAnalytics:
         self.forecasts = {}
         
     def generate_synthetic_data(self, n_products=50, n_days=365):
-        """Generate realistic supply chain data"""
+        """Generate realistic supply chain data with inventory thresholds"""
         np.random.seed(42)
         
         # Product categories and their characteristics
@@ -93,6 +93,13 @@ class SupplyChainAnalytics:
             lead_time = np.random.randint(3, 15)
             unit_cost = np.random.uniform(10, 500)
             
+            # Inventory thresholds
+            max_inventory = base_demand * 30  # 30 days of demand
+            min_inventory = base_demand * 5   # 5 days of demand
+            reorder_point = base_demand * lead_time * 1.5  # Safety buffer
+            
+            current_inventory = np.random.randint(int(min_inventory), int(max_inventory))
+            
             for day in range(n_days):
                 date = start_date + timedelta(days=day)
                 
@@ -107,18 +114,32 @@ class SupplyChainAnalytics:
                 
                 demand = max(0, int(base_demand * seasonal_factor * weekly_factor * (1 + noise)))
                 
-                # Inventory simulation
+                # Inventory simulation with realistic restocking
                 if day == 0:
-                    inventory = np.random.randint(200, 1000)
+                    inventory = current_inventory
                 else:
-                    prev_inventory = data[-1]['inventory'] if data and data[-1]['product_id'] == product_id else inventory
-                    inventory = max(0, prev_inventory - demand + np.random.randint(0, 200))
+                    prev_inventory = current_inventory
+                    
+                    # Consume inventory based on demand
+                    inventory_after_demand = max(0, prev_inventory - demand)
+                    
+                    # Restock if below reorder point (with some randomness)
+                    if inventory_after_demand <= reorder_point and np.random.random() < 0.7:
+                        # Restock to 80-95% of max capacity
+                        restock_amount = np.random.randint(int(max_inventory * 0.8), int(max_inventory * 0.95)) - inventory_after_demand
+                        inventory = min(max_inventory, inventory_after_demand + restock_amount)
+                    else:
+                        inventory = inventory_after_demand
+                    
+                    current_inventory = inventory
                 
-                # Stock out if inventory is low
-                stockout = 1 if inventory < demand * 0.1 else 0
+                # Enhanced stockout logic
+                stockout = 1 if inventory < demand or inventory <= min_inventory * 0.5 else 0
                 
-                # Supplier performance
-                delivery_delay = np.random.poisson(1) if np.random.random() < 0.15 else 0
+                # More realistic supplier delays
+                delivery_delay = 0
+                if np.random.random() < 0.25:  # 25% chance of delay
+                    delivery_delay = np.random.randint(1, 5)
                 
                 data.append({
                     'date': date,
@@ -130,7 +151,10 @@ class SupplyChainAnalytics:
                     'unit_cost': unit_cost,
                     'lead_time': lead_time,
                     'stockout': stockout,
-                    'delivery_delay': delivery_delay
+                    'delivery_delay': delivery_delay,
+                    'max_inventory': max_inventory,
+                    'min_inventory': min_inventory,
+                    'reorder_point': reorder_point
                 })
         
         return pd.DataFrame(data)
@@ -300,6 +324,31 @@ class SupplyChainAnalytics:
             'total_margin_loss': total_margin_loss,
             'margin_loss_percentage': (total_margin_loss / (product_data['demand'].sum() * selling_price)) * 100
         }
+    
+    def calculate_inventory_thresholds(self, df, product_id):
+        """Calculate inventory threshold analysis"""
+        product_data = df[df['product_id'] == product_id]
+        
+        current_inventory = product_data['inventory'].iloc[-1]
+        max_threshold = product_data['max_inventory'].iloc[0]
+        min_threshold = product_data['min_inventory'].iloc[0]
+        reorder_point = product_data['reorder_point'].iloc[0]
+        avg_inventory = product_data['inventory'].mean()
+        
+        # Calculate threshold violations
+        over_max = len(product_data[product_data['inventory'] > max_threshold])
+        under_min = len(product_data[product_data['inventory'] < min_threshold])
+        
+        return {
+            'current_inventory': current_inventory,
+            'max_threshold': max_threshold,
+            'min_threshold': min_threshold,
+            'reorder_point': reorder_point,
+            'avg_inventory': avg_inventory,
+            'over_max_days': over_max,
+            'under_min_days': under_min,
+            'threshold_utilization': (avg_inventory / max_threshold) * 100
+        }
 
 def main():
     # Initialize the analytics class
@@ -421,26 +470,48 @@ def main():
             st.plotly_chart(fig, use_container_width=True)
         
         with col2:
-            st.subheader("Demand vs Inventory")
+            st.subheader("Inventory Thresholds")
+            threshold_data = analytics.calculate_inventory_thresholds(df, selected_product)
+            
             fig = go.Figure()
-            fig.add_trace(go.Scatter(x=product_data['date'], y=product_data['demand'], 
-                                   name='Demand', line=dict(color='red')))
             fig.add_trace(go.Scatter(x=product_data['date'], y=product_data['inventory'], 
                                    name='Inventory', line=dict(color='blue')))
-            fig.update_layout(title=f"Demand vs Inventory for {selected_product}")
+            fig.add_hline(y=threshold_data['max_threshold'], line_dash="dash", 
+                         line_color="red", annotation_text="Max Threshold")
+            fig.add_hline(y=threshold_data['min_threshold'], line_dash="dash", 
+                         line_color="orange", annotation_text="Min Threshold")
+            fig.add_hline(y=threshold_data['reorder_point'], line_dash="dot", 
+                         line_color="green", annotation_text="Reorder Point")
+            fig.update_layout(title=f"Inventory Thresholds for {selected_product}")
             st.plotly_chart(fig, use_container_width=True)
         
-        # Inventory metrics
-        st.subheader("Inventory Metrics")
-        col1, col2, col3 = st.columns(3)
+        # Enhanced Inventory metrics
+        st.subheader("Inventory Metrics & Thresholds")
+        threshold_data = analytics.calculate_inventory_thresholds(df, selected_product)
         
-        avg_inventory = product_data['inventory'].mean()
+        col1, col2, col3, col4 = st.columns(4)
+        
         stockout_days = product_data['stockout'].sum()
-        turnover = (product_data['demand'].sum() * product_data['unit_cost'].iloc[0]) / avg_inventory
+        turnover = (product_data['demand'].sum() * product_data['unit_cost'].iloc[0]) / threshold_data['avg_inventory']
         
-        col1.metric("Average Inventory", f"{avg_inventory:.0f} units")
+        col1.metric("Current Inventory", f"{threshold_data['current_inventory']:.0f} units")
         col2.metric("Stockout Days", f"{stockout_days} days")
-        col3.metric("Inventory Turnover", f"{turnover:.2f}")
+        col3.metric("Threshold Utilization", f"{threshold_data['threshold_utilization']:.1f}%")
+        col4.metric("Inventory Turnover", f"{turnover:.2f}")
+        
+        # Threshold violations
+        col1, col2 = st.columns(2)
+        with col1:
+            if threshold_data['over_max_days'] > 0:
+                st.warning(f"⚠️ Exceeded max threshold {threshold_data['over_max_days']} days")
+            else:
+                st.success("✅ No max threshold violations")
+        
+        with col2:
+            if threshold_data['under_min_days'] > 0:
+                st.error(f"🚨 Below min threshold {threshold_data['under_min_days']} days")
+            else:
+                st.success("✅ No min threshold violations")
     
     elif page == "Demand Forecasting":
         st.header("Demand Forecasting")
