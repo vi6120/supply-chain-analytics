@@ -23,7 +23,7 @@ warnings.filterwarnings('ignore')
 # Set page config
 st.set_page_config(
     page_title="Supply Chain Analytics",
-    page_icon="📦",
+    page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -32,19 +32,21 @@ st.set_page_config(
 st.markdown("""
 <style>
     .main-header {
-        font-size: 3rem;
-        color: #1f77b4;
+        font-size: 2.5rem;
+        color: #2c3e50;
         text-align: center;
         margin-bottom: 2rem;
-        font-weight: bold;
+        font-weight: 600;
     }
     .metric-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
         padding: 1rem;
-        border-radius: 10px;
-        color: white;
+        border-radius: 8px;
+        color: #495057;
         text-align: center;
         margin: 0.5rem 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .sidebar .sidebar-content {
         background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
@@ -446,28 +448,28 @@ class SupplyChainAnalytics:
 
 def show_kpi_catalog():
     """Display KPI definitions and explanations"""
-    with st.expander("📚 KPI Catalog & Technical Definitions"):
+    with st.expander("KPI Catalog & Technical Definitions"):
         st.markdown("""
-        ### 📊 **Inventory KPIs**
+        ### Inventory KPIs
         - **Inventory Turnover**: Measures how efficiently inventory is used. Higher values indicate better efficiency.
         - **Stockout Rate**: Percentage of time when demand cannot be met. Lower is better for customer service.
         - **Service Level**: Probability of meeting demand without stockouts. Target: 95-99%.
         - **Carrying Cost**: Cost of holding inventory including storage, insurance, and capital costs.
         
-        ### 💰 **Financial Metrics**
+        ### Financial Metrics
         - **Cost per Unit per Day**: Daily holding cost for each inventory unit.
         - **Lost Sales**: Revenue lost when customers cannot purchase due to stockouts.
         - **ROI (Return on Investment)**: Profit generated per dollar invested in inventory.
         - **Margin Loss**: Profit reduction due to operational inefficiencies.
         
-        ### 📈 **Threshold Management**
+        ### Threshold Management
         - **Maximum Inventory**: Upper safety limit to prevent overstocking (30 days demand).
         - **Minimum Inventory**: Lower safety limit to prevent stockouts (5 days demand).
         - **Reorder Point**: Inventory level that triggers new orders.
         - **Threshold Utilization**: Current inventory as percentage of maximum capacity.
         - **Service Level**: Probability of not stocking out during lead time (85%-99.9%).
         
-        ### 🚚 **Supplier Metrics**
+        ### Supplier Metrics
         - **Lead Time**: Time between order placement and delivery.
         - **Delivery Delay**: Days beyond promised delivery date.
         - **Performance Score**: Composite metric combining reliability and speed.
@@ -489,6 +491,20 @@ def main():
     
     # Header
     st.markdown('<h1 class="main-header">Supply Chain & Inventory Optimization Analytics</h1>', unsafe_allow_html=True)
+    
+    # Professional header info
+    st.markdown("""
+    <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 2rem; border-left: 4px solid #2c3e50;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong>Author:</strong> Vikas Ramaswamy | <strong>Version:</strong> 1.0 | <strong>Technology:</strong> Python, Streamlit, Prophet, ARIMA
+            </div>
+            <div style="color: #6c757d; font-size: 0.9rem;">
+                Professional Supply Chain Analytics Solution
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Sidebar
     st.sidebar.title("Navigation")
@@ -563,7 +579,7 @@ def main():
         
         # KPI Explanations
         st.markdown("""
-        ### 📊 **KPI Explanations**
+        ### KPI Explanations
         
         - **Inventory Turnover {:.2f}**: Higher values (>6) indicate efficient inventory management
         - **Stockout Rate {:.1f}%**: Target <5% for good customer service
@@ -591,7 +607,7 @@ def main():
         
         # Chart Explanations
         st.markdown("""
-        ### 📈 **Chart Explanations**
+        ### Chart Explanations
         
         **Daily Demand Trend**: Shows total demand across all products over time. Look for:
         - Seasonal patterns (peaks and valleys)
@@ -654,7 +670,7 @@ def main():
         
         # Threshold Analysis
         st.markdown("""
-        ### 📈 **Threshold Analysis**
+        ### Threshold Analysis
         
         **Current Inventory**: {:.0f} units ({:.1f}% of max capacity)
         
@@ -674,19 +690,19 @@ def main():
         col1, col2 = st.columns(2)
         with col1:
             if threshold_data['over_max_days'] > 0:
-                st.warning(f"⚠️ Exceeded max threshold {threshold_data['over_max_days']} days")
+                st.warning(f"Exceeded max threshold {threshold_data['over_max_days']} days")
             else:
-                st.success("✅ No max threshold violations")
+                st.success("No max threshold violations")
         
         with col2:
             if threshold_data['under_min_days'] > 0:
-                st.error(f"🚨 Below min threshold {threshold_data['under_min_days']} days")
+                st.error(f"Below min threshold {threshold_data['under_min_days']} days")
             else:
-                st.success("✅ No min threshold violations")
+                st.success("No min threshold violations")
         
         # Chart Explanations
         st.markdown("""
-        ### 📈 **Chart Explanations**
+        ### Chart Explanations
         
         **Inventory Levels Over Time**: Shows how inventory changes daily. Key insights:
         - Inventory depletion patterns
@@ -786,7 +802,7 @@ def main():
                 
                 # Chart Explanations
                 st.markdown("""
-                ### 📈 **Forecast Chart Explanation**
+                ### Forecast Chart Explanation
                 
                 **Blue Line (Historical)**: Past demand data showing actual patterns
                 **Red Dashed Line (Forecast)**: Predicted future demand using {}
@@ -802,7 +818,7 @@ def main():
         
         # Forecasting Method Explanations
         st.markdown("""
-        ### 🤖 **Forecasting Methods**
+        ### Forecasting Methods
         
         **Prophet**: Advanced ML model that handles:
         - Seasonal patterns (yearly, weekly)
@@ -853,15 +869,15 @@ def main():
         
         # Reorder status
         if current_inventory <= reorder_calc['reorder_point']:
-            st.error(f"🚨 REORDER NOW! Current inventory ({current_inventory}) is below reorder point ({reorder_calc['reorder_point']})")
+            st.error(f"REORDER NOW! Current inventory ({current_inventory}) is below reorder point ({reorder_calc['reorder_point']})")
             days_until_stockout = current_inventory / avg_demand
             st.warning(f"Estimated days until stockout: {days_until_stockout:.1f} days")
         else:
             days_until_reorder = (current_inventory - reorder_calc['reorder_point']) / avg_demand
-            st.success(f"✅ Inventory OK. Reorder in approximately {days_until_reorder:.1f} days")
+            st.success(f"Inventory OK. Reorder in approximately {days_until_reorder:.1f} days")
         
         # EOQ Analysis
-        st.subheader("📦 Economic Order Quantity (EOQ) Analysis")
+        st.subheader("Economic Order Quantity (EOQ) Analysis")
         
         # EOQ parameters
         col1, col2 = st.columns(2)
@@ -882,7 +898,7 @@ def main():
         col4.metric("Total Annual Cost", f"${eoq_result['total_inventory_cost']:,.0f}")
         
         # Service-Level Driven Inventory Planning
-        st.subheader("🎯 Service-Level Driven Inventory Planning")
+        st.subheader("Service-Level Driven Inventory Planning")
         
         # Interactive service level slider
         st.markdown("**Trade-off Analysis: Cost vs Customer Service**")
@@ -903,7 +919,7 @@ def main():
         seasonal_data = analytics.calculate_seasonal_safety_stock(df, selected_product, interactive_service_level)
         
         # Display seasonal insights
-        st.subheader("📅 Seasonal Demand Analysis")
+        st.subheader("Seasonal Demand Analysis")
         col1, col2 = st.columns(2)
         
         with col1:
@@ -1019,7 +1035,7 @@ def main():
         
         # Chart Explanations
         st.markdown("""
-        ### 📈 **Service-Level Planning Explanation**
+        ### Service-Level Planning Explanation
         
         **Service Level Trade-offs**:
         - **85% Service**: Lower safety stock, higher stockout risk, lower costs
@@ -1097,16 +1113,16 @@ def main():
         col1, col2 = st.columns(2)
         
         with col1:
-            st.success(f"🏆 Best Performer: {supplier_metrics.iloc[0]['supplier']}")
+            st.success(f"Best Performer: {supplier_metrics.iloc[0]['supplier']}")
             st.write(f"Performance Score: {supplier_metrics.iloc[0]['Performance_Score']:.2f}")
         
         with col2:
-            st.error(f"⚠️ Needs Improvement: {supplier_metrics.iloc[-1]['supplier']}")
+            st.error(f"Needs Improvement: {supplier_metrics.iloc[-1]['supplier']}")
             st.write(f"Performance Score: {supplier_metrics.iloc[-1]['Performance_Score']:.2f}")
         
         # Chart Explanations
         st.markdown("""
-        ### 📈 **Supplier Analysis Explanation**
+        ### Supplier Analysis Explanation
         
         **Delivery Performance Chart**: Shows average delays by supplier
         - Lower bars indicate more reliable suppliers
@@ -1148,7 +1164,7 @@ def main():
         margin_impact = analytics.calculate_margin_impact(df, selected_product, profit_margin)
         
         # Carrying Cost Analysis
-        st.subheader("💰 Carrying Cost Simulation")
+        st.subheader("Carrying Cost Simulation")
         col1, col2, col3, col4 = st.columns(4)
         
         col1.metric("Cost per Unit per Day", f"${carrying_costs['cost_per_unit_per_day']:.2f}")
@@ -1157,7 +1173,7 @@ def main():
         col4.metric("Avg Inventory Value", f"${carrying_costs['avg_inventory_value']:,.0f}")
         
         # Lost Sales Analysis
-        st.subheader("📉 Lost Sales Estimation")
+        st.subheader("Lost Sales Estimation")
         col1, col2, col3, col4 = st.columns(4)
         
         col1.metric("Stockout Days", f"{lost_sales['stockout_days']} days")
@@ -1166,7 +1182,7 @@ def main():
         col4.metric("Lost Profit", f"${lost_sales['lost_profit']:,.0f}")
         
         # Margin Impact Analysis
-        st.subheader("📊 Dynamic Margin Analysis")
+        st.subheader("Dynamic Margin Analysis")
         col1, col2, col3 = st.columns(3)
         
         col1.metric("Delay Cost Impact", f"${margin_impact['delay_cost']:,.0f}")
@@ -1194,7 +1210,7 @@ def main():
         st.plotly_chart(fig, use_container_width=True)
         
         # Cost optimization recommendations
-        st.subheader("💡 Cost Optimization Recommendations")
+        st.subheader("Cost Optimization Recommendations")
         
         total_annual_cost = (carrying_costs['annual_carrying_cost'] + 
                            lost_sales['lost_profit'] + 
@@ -1206,12 +1222,12 @@ def main():
             st.info(f"**Total Annual Cost Impact: ${total_annual_cost:,.0f}**")
             
             if lost_sales['stockout_days'] > 10:
-                st.warning("🚨 High stockout frequency detected. Consider increasing safety stock.")
+                st.warning("High stockout frequency detected. Consider increasing safety stock.")
             
             if carrying_costs['annual_carrying_cost'] > lost_sales['lost_profit']:
-                st.warning("💰 Carrying costs exceed lost sales. Consider reducing inventory levels.")
+                st.warning("Carrying costs exceed lost sales. Consider reducing inventory levels.")
             else:
-                st.success("✅ Inventory levels appear optimized for cost vs service trade-off.")
+                st.success("Inventory levels appear optimized for cost vs service trade-off.")
         
         with col2:
             # ROI calculation for inventory investment
@@ -1222,14 +1238,14 @@ def main():
             st.metric("Inventory ROI", f"{roi:.1f}%")
             
             if margin_impact['delay_impact_units'] > 0:
-                st.warning(f"⏰ Supplier delays affecting {margin_impact['delay_impact_units']:,.0f} units")
+                st.warning(f"Supplier delays affecting {margin_impact['delay_impact_units']:,.0f} units")
             
             if margin_impact['margin_loss_percentage'] > 5:
-                st.error("📈 High margin loss detected. Review supplier performance.")
+                st.error("High margin loss detected. Review supplier performance.")
         
         # Chart Explanations
         st.markdown("""
-        ### 📈 **Financial Analysis Explanation**
+        ### Financial Analysis Explanation
         
         **Annual Financial Impact Chart**: Shows cost breakdown by category:
         - **Carrying Costs**: Cost of holding inventory (storage, insurance, capital)
@@ -1254,3 +1270,23 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
+    # Professional Footer
+    st.markdown("---")
+    st.markdown("""
+    <div style="text-align: center; padding: 2rem; background: #f8f9fa; border-radius: 8px; margin-top: 2rem;">
+        <div style="margin-bottom: 1rem;">
+            <strong>Supply Chain & Inventory Optimization Analytics</strong>
+        </div>
+        <div style="color: #6c757d; margin-bottom: 1rem;">
+            Professional analytics solution for demand forecasting, inventory optimization, and supplier performance management
+        </div>
+        <div style="display: flex; justify-content: center; gap: 2rem; margin-bottom: 1rem; flex-wrap: wrap;">
+            <div><strong>Features:</strong> Demand Forecasting | Inventory Analysis | Reorder Optimization</div>
+            <div><strong>Technology:</strong> Python | Streamlit | Prophet | ARIMA</div>
+        </div>
+        <div style="color: #6c757d; font-size: 0.9rem;">
+            © 2024 Vikas Ramaswamy | Professional Analytics Portfolio | Educational Purpose
+        </div>
+    </div>
+    """, unsafe_allow_html=True)

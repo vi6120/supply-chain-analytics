@@ -11,10 +11,10 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     app_path = os.path.join(script_dir, "supply_chain_app.py")
     
-    print("🚀 Starting Supply Chain Analytics Dashboard...")
-    print("📊 The app will open in your default web browser")
-    print("🔗 URL: http://localhost:8501")
-    print("⏹️  Press Ctrl+C to stop the server")
+    print("Starting Supply Chain Analytics Dashboard...")
+    print("The app will open in your default web browser")
+    print("URL: http://localhost:8501")
+    print("Press Ctrl+C to stop the server")
     print("-" * 50)
     
     try:
@@ -27,10 +27,10 @@ def main():
             "--browser.gatherUsageStats", "false"
         ])
     except KeyboardInterrupt:
-        print("\n👋 App stopped. Thanks for using Supply Chain Analytics!")
+        print("\nApp stopped. Thanks for using Supply Chain Analytics!")
     except Exception as e:
-        print(f"❌ Error running app: {e}")
-        print("💡 Make sure you have Python installed and try again")
+        print(f"Error running app: {e}")
+        print("Make sure you have Python installed and try again")
 
 if __name__ == "__main__":
     main()

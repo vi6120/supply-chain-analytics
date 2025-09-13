@@ -2,27 +2,27 @@
 
 ## Features
 
-### 📊 Dashboard Overview
+### Dashboard Overview
 - Key Performance Indicators (KPIs)
 - Inventory turnover analysis
 - Stockout rate monitoring
 - Delivery performance metrics
 - Interactive visualizations
 
-### 📈 Demand Forecasting
+### Demand Forecasting
 - Prophet time series forecasting
 - ARIMA modeling
 - Seasonal pattern detection
 - Confidence intervals
 - Multi-period forecasts
 
-### 🎯 Inventory Analysis
+### Inventory Analysis
 - Real-time inventory tracking
 - Demand vs inventory correlation
 - Stockout frequency analysis
 - Category-wise performance
 
-### ⚡ Reorder Optimization
+### Reorder Optimization
 - Dynamic reorder point calculation
 - Safety stock optimization
 - Service level configuration (85%-99.9%)
@@ -34,13 +34,13 @@
 - Inventory simulation
 - Automated reorder alerts
 
-### 🚚 Supplier Performance
+### Supplier Performance
 - Delivery delay tracking
 - Lead time analysis
 - Performance scoring
 - Supplier rankings
 
-### 💰 Cost & Financial Integration
+### Cost & Financial Integration
 - Carrying cost simulation ($/unit/day)
 - Lost sales estimation from stockouts
 - Dynamic margin analysis
@@ -48,7 +48,7 @@
 - Financial impact visualization
 - Cost optimization recommendations
 
-### 📈 Enhanced Inventory Analysis
+### Enhanced Inventory Analysis
 - Inventory threshold management
 - Upper and lower limit monitoring
 - Threshold violation tracking
