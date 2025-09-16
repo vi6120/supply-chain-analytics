@@ -71,10 +71,10 @@ class SupplyChainAnalytics:
         self.forecasts = {}
         
     def generate_synthetic_data(self, n_products=50, n_days=365):
-        """Generate realistic supply chain data with inventory thresholds"""
+        """Create sample supply chain data for the demo"""
         np.random.seed(42)
         
-        # Product categories and their characteristics
+        # Different types of products we'll simulate
         categories = ['Electronics', 'Clothing', 'Food', 'Home', 'Sports']
         suppliers = ['Supplier_A', 'Supplier_B', 'Supplier_C', 'Supplier_D', 'Supplier_E']
         
@@ -85,49 +85,49 @@ class SupplyChainAnalytics:
             category = np.random.choice(categories)
             supplier = np.random.choice(suppliers)
             
-            # Base demand varies by category
+            # Each category has different demand patterns
             base_demand = {
                 'Electronics': 100, 'Clothing': 150, 'Food': 200, 
                 'Home': 80, 'Sports': 120
             }[category]
             
-            # Lead time varies by supplier
+            # How long it takes to get new stock
             lead_time = np.random.randint(3, 15)
             unit_cost = np.random.uniform(10, 500)
             
-            # Inventory thresholds
-            max_inventory = base_demand * 30  # 30 days of demand
-            min_inventory = base_demand * 5   # 5 days of demand
-            reorder_point = base_demand * lead_time * 1.5  # Safety buffer
+            # Set inventory limits
+            max_inventory = base_demand * 30  # Keep max 30 days worth
+            min_inventory = base_demand * 5   # Need at least 5 days worth
+            reorder_point = base_demand * lead_time * 1.5  # When to order more
             
             current_inventory = np.random.randint(int(min_inventory), int(max_inventory))
             
             for day in range(n_days):
                 date = start_date + timedelta(days=day)
                 
-                # Seasonal patterns
+                # Demand changes throughout the year
                 seasonal_factor = 1 + 0.3 * np.sin(2 * np.pi * day / 365)
                 
-                # Weekly patterns (lower on weekends)
+                # Less demand on weekends
                 weekly_factor = 0.7 if date.weekday() >= 5 else 1.0
                 
-                # Random noise
+                # Add some randomness
                 noise = np.random.normal(0, 0.2)
                 
                 demand = max(0, int(base_demand * seasonal_factor * weekly_factor * (1 + noise)))
                 
-                # Inventory simulation with realistic restocking
+                # Simulate how inventory changes each day
                 if day == 0:
                     inventory = current_inventory
                 else:
                     prev_inventory = current_inventory
                     
-                    # Consume inventory based on demand
+                    # Sell products (reduce inventory)
                     inventory_after_demand = max(0, prev_inventory - demand)
                     
-                    # Restock if below reorder point (with some randomness)
+                    # Order more stock when running low
                     if inventory_after_demand <= reorder_point and np.random.random() < 0.7:
-                        # Restock to 80-95% of max capacity
+                        # Restock to near full capacity
                         restock_amount = np.random.randint(int(max_inventory * 0.8), int(max_inventory * 0.95)) - inventory_after_demand
                         inventory = min(max_inventory, inventory_after_demand + restock_amount)
                     else:
@@ -135,19 +135,19 @@ class SupplyChainAnalytics:
                     
                     current_inventory = inventory
                 
-                # More realistic supplier delays
+                # Sometimes suppliers are late
                 delivery_delay = 0
                 if np.random.random() < 0.25:  # 25% chance of delay
                     delivery_delay = np.random.randint(1, 5)
                 
-                # Enhanced stockout logic with more realistic scenarios
+                # Check if we run out of stock
                 stockout = 0
                 if inventory < demand:
                     stockout = 1
                 elif inventory <= min_inventory * 0.3 and np.random.random() < 0.4:
-                    stockout = 1  # Random stockouts when very low inventory
+                    stockout = 1  # Sometimes run out even with some stock left
                 elif delivery_delay > 2 and inventory <= reorder_point and np.random.random() < 0.6:
-                    stockout = 1  # Stockouts due to delivery delays
+                    stockout = 1  # Late deliveries cause stockouts
                 
                 data.append({
                     'date': date,
@@ -168,10 +168,10 @@ class SupplyChainAnalytics:
         return pd.DataFrame(data)
     
     def calculate_kpis(self, df):
-        """Calculate key supply chain KPIs"""
+        """Calculate the main performance metrics"""
         kpis = {}
         
-        # Inventory Turnover = COGS / Average Inventory
+        # Cost of goods sold
         df['cogs'] = df['demand'] * df['unit_cost']
         product_metrics = df.groupby('product_id').agg({
             'inventory': 'mean',
@@ -193,7 +193,7 @@ class SupplyChainAnalytics:
         return kpis, product_metrics
     
     def forecast_demand(self, df, product_id, method='prophet', periods=30):
-        """Forecast demand using Prophet or ARIMA"""
+        """Predict future demand using AI models"""
         product_data = df[df['product_id'] == product_id].copy()
         product_data = product_data.groupby('date')['demand'].sum().reset_index()
         
@@ -201,7 +201,7 @@ class SupplyChainAnalytics:
             return None
         
         if method == 'prophet':
-            # Prophet forecasting
+            # Use Facebook's Prophet model
             prophet_data = product_data.rename(columns={'date': 'ds', 'demand': 'y'})
             
             model = Prophet(
@@ -222,7 +222,7 @@ class SupplyChainAnalytics:
             }
         
         elif method == 'arima':
-            # ARIMA forecasting
+            # Use traditional ARIMA model
             try:
                 model = ARIMA(product_data['demand'], order=(1, 1, 1))
                 fitted_model = model.fit()
@@ -252,19 +252,19 @@ class SupplyChainAnalytics:
                 return None
     
     def calculate_reorder_point(self, avg_demand, lead_time, service_level=0.95, lead_time_std=None):
-        """Calculate reorder point with safety stock and lead time variability"""
-        # Z-score mapping for different service levels
+        """Figure out when to order more inventory"""
+        # Different service levels need different safety buffers
         z_scores = {
             0.85: 1.04, 0.90: 1.28, 0.95: 1.65, 0.99: 2.33, 0.999: 3.09
         }
         z_score = z_scores.get(service_level, 1.65)
-        demand_std = avg_demand * 0.3  # Assume 30% coefficient of variation
+        demand_std = avg_demand * 0.3  # Assume demand varies by 30%
         
-        # Enhanced safety stock with lead time variability
+        # Account for delivery time uncertainty
         if lead_time_std is None:
-            lead_time_std = lead_time * 0.2  # Assume 20% lead time variability
+            lead_time_std = lead_time * 0.2  # Delivery times vary by 20%
         
-        # Safety stock formula with lead time variability
+        # Calculate safety stock buffer
         safety_stock = z_score * np.sqrt(
             (demand_std ** 2 * lead_time) + 
             (avg_demand ** 2 * lead_time_std ** 2)

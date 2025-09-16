@@ -7,7 +7,7 @@ import sys
 import os
 
 def main():
-    # Get the directory of this script
+    # Find the app file
     script_dir = os.path.dirname(os.path.abspath(__file__))
     app_path = os.path.join(script_dir, "supply_chain_app.py")
     
@@ -18,7 +18,7 @@ def main():
     print("-" * 50)
     
     try:
-        # Run the Streamlit app
+        # Launch the web app
         subprocess.run([
             sys.executable, "-m", "streamlit", "run", app_path,
             "--server.port", "8501",
